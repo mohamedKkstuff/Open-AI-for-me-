@@ -4,9 +4,10 @@
   <title>My AI</title>
   <style>
     body {
-      background: #343541;
-      color: white;
-      font-family: Arial;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
     }
 
     #chat {
@@ -20,17 +21,20 @@
     .msg {
       padding: 10px;
       margin: 10px 0;
-      border-radius: 10px;
+      border-radius: 8px;
+      max-width: 80%;
       word-wrap: break-word;
     }
 
     .user {
-      background: #444654;
+      background: #1a1a1a;
+      margin-left: auto;
       text-align: right;
     }
 
     .bot {
-      background: #3e3f4b;
+      background: #2a2a2a;
+      margin-right: auto;
       text-align: left;
     }
 
@@ -39,15 +43,31 @@
       max-width: 600px;
       margin: auto;
       padding: 10px;
+      border-top: 1px solid #222;
     }
 
     input {
       flex: 1;
       padding: 10px;
+      background: #111;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 5px;
+      outline: none;
     }
 
     button {
-      padding: 10px;
+      padding: 10px 15px;
+      margin-left: 10px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #555;
     }
   </style>
 </head>
@@ -68,23 +88,34 @@ async function send() {
 
   if (!input) return;
 
-  chat.innerHTML += `<div class="msg user">${input}</div>`;
+  chat.innerHTML += '<div class="msg user">' + input + '</div>';
   inputEl.value = "";
-
   chat.scrollTop = chat.scrollHeight;
 
-  const res = await fetch("http://localhost:3000/ask", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ message: input })
-  });
+  try {
+    const res = await fetch("http://localhost:3000/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: input })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
-  chat.scrollTop = chat.scrollHeight;
+    chat.innerHTML += '<div class="msg bot">' + data.reply + '</div>';
+    chat.scrollTop = chat.scrollHeight;
+  } catch {
+    chat.innerHTML += '<div class="msg bot">Server error</div>';
+  }
 }
+
+document.getElementById("input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    send();
+  }
+});
 </script>
 
 </body>
 </html>
+
