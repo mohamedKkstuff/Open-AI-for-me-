@@ -4,10 +4,10 @@
   <title>My AI</title>
   <style>
     body {
+      margin: 0;
       background: #000;
       color: #fff;
       font-family: Arial, sans-serif;
-      margin: 0;
     }
 
     #chat {
@@ -44,6 +44,7 @@
       margin: auto;
       padding: 10px;
       border-top: 1px solid #222;
+      align-items: center;
     }
 
     input {
@@ -57,8 +58,8 @@
     }
 
     button {
-      padding: 10px 15px;
-      margin-left: 10px;
+      padding: 10px;
+      margin-left: 8px;
       background: #333;
       color: #fff;
       border: none;
@@ -77,45 +78,105 @@
 
 <div class="input-box">
   <input id="input" placeholder="Ask anything..." />
-  <button onclick="send()">Send</button>
+  <button id="sendBtn">Send</button>
+  <button id="micBtn">🎤</button>
 </div>
 
 <script>
+const inputEl = document.getElementById("input");
+const chatEl = document.getElementById("chat");
+const sendBtn = document.getElementById("sendBtn");
+const micBtn = document.getElementById("micBtn");
+
+let recognition = null;
+let isListening = false;
+
+/* ---------- UI ---------- */
+function addMessage(text, type) {
+  const msg = document.createElement("div");
+  msg.className = "msg " + type;
+  msg.textContent = text;
+  chatEl.appendChild(msg);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+/* ---------- Send ---------- */
 async function send() {
-  const inputEl = document.getElementById("input");
-  const input = inputEl.value.trim();
-  const chat = document.getElementById("chat");
+  const text = inputEl.value.trim();
+  if (!text) return;
 
-  if (!input) return;
-
-  chat.innerHTML += '<div class="msg user">' + input + '</div>';
+  addMessage(text, "user");
   inputEl.value = "";
-  chat.scrollTop = chat.scrollHeight;
 
   try {
     const res = await fetch("http://localhost:3000/ask", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: input })
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ message: text })
     });
 
     const data = await res.json();
+    addMessage(data.reply || "No response", "bot");
 
-    chat.innerHTML += '<div class="msg bot">' + data.reply + '</div>';
-    chat.scrollTop = chat.scrollHeight;
   } catch {
-    chat.innerHTML += '<div class="msg bot">Server error</div>';
+    addMessage("Server error", "bot");
   }
 }
 
-document.getElementById("input").addEventListener("keydown", function(e) {
+/* ---------- Events ---------- */
+sendBtn.onclick = send;
+
+inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
     send();
   }
 });
+
+/* ---------- Speech ---------- */
+function initSpeech() {
+  const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechAPI) return null;
+
+  const rec = new SpeechAPI();
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onresult = (event) => {
+    let transcript = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    inputEl.value = transcript;
+  };
+
+  rec.onend = () => {
+    if (isListening) rec.start();
+  };
+
+  return rec;
+}
+
+recognition = initSpeech();
+
+/* ---------- Mic ---------- */
+micBtn.onclick = () => {
+  if (!recognition) {
+    alert("Speech not supported");
+    return;
+  }
+
+  isListening = !isListening;
+
+  if (isListening) {
+    recognition.start();
+    micBtn.style.background = "#666";
+  } else {
+    recognition.stop();
+    micBtn.style.background = "#333";
+  }
+};
 </script>
 
 </body>
 </html>
-
