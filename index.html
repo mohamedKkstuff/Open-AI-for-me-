@@ -6,7 +6,7 @@
     body {
       margin: 0;
       background: #000;
-      color: #fff;
+      color: white;
       font-family: Arial;
     }
 
@@ -23,7 +23,6 @@
       margin: 10px 0;
       border-radius: 8px;
       max-width: 80%;
-      word-wrap: break-word;
     }
 
     .user { background: #1a1a1a; margin-left: auto; }
@@ -40,7 +39,7 @@
       flex: 1;
       padding: 10px;
       background: #111;
-      color: #fff;
+      color: white;
       border: 1px solid #333;
       border-radius: 6px;
     }
@@ -49,10 +48,9 @@
       margin-left: 8px;
       padding: 10px;
       background: #333;
-      color: #fff;
+      color: white;
       border: none;
       border-radius: 6px;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -73,10 +71,6 @@ const input = document.getElementById("input");
 const micBtn = document.getElementById("mic");
 const sendBtn = document.getElementById("send");
 
-/* =========================
-   CHAT UI
-========================= */
-
 function add(text, type) {
   const el = document.createElement("div");
   el.className = "msg " + type;
@@ -86,39 +80,48 @@ function add(text, type) {
 }
 
 /* =========================
-   AI REQUEST
-   (YOU MUST ADD YOUR API KEY)
+   SIMPLE AI BRAIN (NO API)
 ========================= */
 
-async function askAI(text) {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer YOUR_API_KEY"
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: text }]
-    })
-  });
+function fakeAI(text) {
 
-  const data = await res.json();
-  return data.choices[0].message.content;
+  text = text.toLowerCase();
+
+  if (text.includes("hello") || text.includes("hi")) {
+    return "Hey 👋 how are you?";
+  }
+
+  if (text.includes("name")) {
+    return "I am your AI assistant.";
+  }
+
+  if (text.includes("how are you")) {
+    return "I’m doing good 👍 what about you?";
+  }
+
+  if (text.includes("age")) {
+    return "I don’t have an age, I’m just code.";
+  }
+
+  if (text.includes("what")) {
+    return "Interesting question 🤔 tell me more.";
+  }
+
+  return "I hear you. Can you explain more?";
 }
 
 /* =========================
-   SEND MESSAGE
+   SEND
 ========================= */
 
-async function send() {
+function send() {
   const text = input.value.trim();
   if (!text) return;
 
   add(text, "user");
   input.value = "";
 
-  const reply = await askAI(text);
+  const reply = fakeAI(text);
   add(reply, "bot");
 }
 
@@ -129,7 +132,7 @@ input.addEventListener("keydown", (e) => {
 });
 
 /* =========================
-   MICROPHONE (SIMPLE + STABLE)
+   MIC (FIXED SIMPLE VERSION)
 ========================= */
 
 const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
