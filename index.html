@@ -11,11 +11,12 @@
     }
 
     #chat {
-      max-width: 600px;
+      max-width: 650px;
       margin: auto;
       padding: 20px;
       height: 80vh;
       overflow-y: auto;
+      box-sizing: border-box;
     }
 
     .msg {
@@ -24,6 +25,7 @@
       border-radius: 8px;
       max-width: 80%;
       word-wrap: break-word;
+      line-height: 1.4;
     }
 
     .user {
@@ -40,11 +42,12 @@
 
     .input-box {
       display: flex;
-      max-width: 600px;
+      max-width: 650px;
       margin: auto;
       padding: 10px;
       border-top: 1px solid #222;
       align-items: center;
+      box-sizing: border-box;
     }
 
     input {
@@ -83,30 +86,59 @@
 </div>
 
 <script>
+
+/* =========================
+   ELEMENTS
+========================= */
+
 const inputEl = document.getElementById("input");
 const chatEl = document.getElementById("chat");
 const sendBtn = document.getElementById("sendBtn");
 const micBtn = document.getElementById("micBtn");
 
-/* ---------------- CHAT UI ---------------- */
+/* =========================
+   CHAT SYSTEM
+========================= */
+
 function addMessage(text, type) {
-  const div = document.createElement("div");
-  div.className = "msg " + type;
-  div.textContent = text;
-  chatEl.appendChild(div);
+  const el = document.createElement("div");
+  el.className = "msg " + type;
+  el.textContent = text;
+  chatEl.appendChild(el);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-/* ---------------- SEND ---------------- */
+/* =========================
+   STATE
+========================= */
+
+const speechState = {
+  listening: false,
+  committed: ""
+};
+
+/* =========================
+   RESET
+========================= */
+
+function resetAll() {
+  speechState.committed = "";
+  inputEl.value = "";
+}
+
+/* =========================
+   SEND LOGIC
+========================= */
+
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
 
   addMessage(text, "user");
 
-  inputEl.value = "";
-  transcriptBuffer = "";
-  lastInterim = "";
+  resetAll();
+
+  if (recognition) recognition.abort();
 
   try {
     const res = await fetch("http://localhost:3000/ask", {
@@ -132,80 +164,88 @@ inputEl.addEventListener("keydown", (e) => {
   }
 });
 
-/* ---------------- SPEECH ENGINE ---------------- */
+/* =========================
+   SPEECH ENGINE (FIXED MODEL)
+========================= */
+
 const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 let recognition = null;
-let isListening = false;
 
-let transcriptBuffer = "";
-let lastInterim = "";
-let restartLock = false;
-
-function initSpeech() {
+function createSpeech() {
   if (!SpeechAPI) return null;
 
   const rec = new SpeechAPI();
+
   rec.continuous = true;
   rec.interimResults = true;
   rec.lang = "en-US";
 
+  let lastFinal = "";
+
   rec.onresult = (event) => {
+
     let interim = "";
-    let finalPart = "";
+    let final = "";
 
     for (let i = 0; i < event.results.length; i++) {
       const text = event.results[i][0].transcript;
 
       if (event.results[i].isFinal) {
-        finalPart += text + " ";
+        final += text + " ";
       } else {
         interim += text;
       }
     }
 
-    if (finalPart && finalPart !== lastInterim) {
-      transcriptBuffer += finalPart;
-      lastInterim = finalPart;
+    if (final !== lastFinal) {
+      speechState.committed += final;
+      lastFinal = final;
     }
 
-    inputEl.value = transcriptBuffer + interim;
+    inputEl.value = speechState.committed + interim;
   };
 
   rec.onend = () => {
-    if (isListening && !restartLock) {
-      restartLock = true;
-      setTimeout(() => {
-        restartLock = false;
-        rec.start();
-      }, 200);
+    if (speechState.listening) {
+      setTimeout(() => rec.start(), 200);
     }
   };
 
   return rec;
 }
 
-recognition = initSpeech();
+recognition = createSpeech();
 
-/* ---------------- MIC ---------------- */
+/* =========================
+   MIC CONTROL
+========================= */
+
 micBtn.onclick = () => {
+
   if (!recognition) {
     alert("Speech not supported in this browser");
     return;
   }
 
-  if (!isListening) {
-    isListening = true;
-    transcriptBuffer = "";
-    lastInterim = "";
+  if (!speechState.listening) {
+    speechState.listening = true;
+
+    resetAll();
+
     recognition.start();
+
     micBtn.style.background = "#666";
+
   } else {
-    isListening = false;
+    speechState.listening = false;
+
     recognition.stop();
+
     micBtn.style.background = "#333";
   }
 };
+
 </script>
 
 </body>
