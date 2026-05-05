@@ -7,16 +7,15 @@
       margin: 0;
       background: #000;
       color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: Arial;
     }
 
     #chat {
-      max-width: 650px;
+      max-width: 700px;
       margin: auto;
       padding: 20px;
       height: 80vh;
       overflow-y: auto;
-      box-sizing: border-box;
     }
 
     .msg {
@@ -25,29 +24,16 @@
       border-radius: 8px;
       max-width: 80%;
       word-wrap: break-word;
-      line-height: 1.4;
     }
 
-    .user {
-      background: #1a1a1a;
-      margin-left: auto;
-      text-align: right;
-    }
+    .user { background: #1a1a1a; margin-left: auto; }
+    .bot { background: #2a2a2a; }
 
-    .bot {
-      background: #2a2a2a;
-      margin-right: auto;
-      text-align: left;
-    }
-
-    .input-box {
+    .bar {
       display: flex;
-      max-width: 650px;
+      max-width: 700px;
       margin: auto;
       padding: 10px;
-      border-top: 1px solid #222;
-      align-items: center;
-      box-sizing: border-box;
     }
 
     input {
@@ -56,22 +42,17 @@
       background: #111;
       color: #fff;
       border: 1px solid #333;
-      border-radius: 5px;
-      outline: none;
+      border-radius: 6px;
     }
 
     button {
-      padding: 10px;
       margin-left: 8px;
+      padding: 10px;
       background: #333;
       color: #fff;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       cursor: pointer;
-    }
-
-    button:hover {
-      background: #555;
     }
   </style>
 </head>
@@ -79,170 +60,103 @@
 
 <div id="chat"></div>
 
-<div class="input-box">
-  <input id="input" placeholder="Ask anything..." />
-  <button id="sendBtn">Send</button>
-  <button id="micBtn">🎤</button>
+<div class="bar">
+  <input id="input" placeholder="Speak or type..." />
+  <button id="mic">🎤</button>
+  <button id="send">Send</button>
 </div>
 
 <script>
 
-/* =========================
-   ELEMENTS
-========================= */
-
-const inputEl = document.getElementById("input");
-const chatEl = document.getElementById("chat");
-const sendBtn = document.getElementById("sendBtn");
-const micBtn = document.getElementById("micBtn");
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const micBtn = document.getElementById("mic");
+const sendBtn = document.getElementById("send");
 
 /* =========================
-   CHAT SYSTEM
+   CHAT UI
 ========================= */
 
-function addMessage(text, type) {
+function add(text, type) {
   const el = document.createElement("div");
   el.className = "msg " + type;
   el.textContent = text;
-  chatEl.appendChild(el);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
 }
 
 /* =========================
-   STATE
+   AI REQUEST
+   (YOU MUST ADD YOUR API KEY)
 ========================= */
 
-const speechState = {
-  listening: false,
-  committed: ""
-};
+async function askAI(text) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer YOUR_API_KEY"
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: text }]
+    })
+  });
 
-/* =========================
-   RESET
-========================= */
-
-function resetAll() {
-  speechState.committed = "";
-  inputEl.value = "";
+  const data = await res.json();
+  return data.choices[0].message.content;
 }
 
 /* =========================
-   SEND LOGIC
+   SEND MESSAGE
 ========================= */
 
 async function send() {
-  const text = inputEl.value.trim();
+  const text = input.value.trim();
   if (!text) return;
 
-  addMessage(text, "user");
+  add(text, "user");
+  input.value = "";
 
-  resetAll();
-
-  if (recognition) recognition.abort();
-
-  try {
-    const res = await fetch("http://localhost:3000/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text })
-    });
-
-    const data = await res.json();
-    addMessage(data.reply || "No response", "bot");
-
-  } catch {
-    addMessage("Server error", "bot");
-  }
+  const reply = await askAI(text);
+  add(reply, "bot");
 }
 
 sendBtn.onclick = send;
 
-inputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    send();
-  }
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") send();
 });
 
 /* =========================
-   SPEECH ENGINE (FIXED MODEL)
+   MICROPHONE (SIMPLE + STABLE)
 ========================= */
 
 const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
 
-let recognition = null;
-
-function createSpeech() {
-  if (!SpeechAPI) return null;
-
-  const rec = new SpeechAPI();
-
-  rec.continuous = true;
-  rec.interimResults = true;
+if (SpeechAPI) {
+  rec = new SpeechAPI();
+  rec.continuous = false;
+  rec.interimResults = false;
   rec.lang = "en-US";
 
-  let lastFinal = "";
-
-  rec.onresult = (event) => {
-
-    let interim = "";
-    let final = "";
-
-    for (let i = 0; i < event.results.length; i++) {
-      const text = event.results[i][0].transcript;
-
-      if (event.results[i].isFinal) {
-        final += text + " ";
-      } else {
-        interim += text;
-      }
-    }
-
-    if (final !== lastFinal) {
-      speechState.committed += final;
-      lastFinal = final;
-    }
-
-    inputEl.value = speechState.committed + interim;
+  rec.onresult = (e) => {
+    input.value = e.results[0][0].transcript;
   };
-
-  rec.onend = () => {
-    if (speechState.listening) {
-      setTimeout(() => rec.start(), 200);
-    }
-  };
-
-  return rec;
 }
 
-recognition = createSpeech();
-
-/* =========================
-   MIC CONTROL
-========================= */
+let listening = false;
 
 micBtn.onclick = () => {
+  if (!rec) return alert("Speech not supported");
 
-  if (!recognition) {
-    alert("Speech not supported in this browser");
-    return;
-  }
-
-  if (!speechState.listening) {
-    speechState.listening = true;
-
-    resetAll();
-
-    recognition.start();
-
-    micBtn.style.background = "#666";
-
+  if (!listening) {
+    rec.start();
+    listening = true;
   } else {
-    speechState.listening = false;
-
-    recognition.stop();
-
-    micBtn.style.background = "#333";
+    rec.stop();
+    listening = false;
   }
 };
 
