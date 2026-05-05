@@ -90,6 +90,7 @@ const micBtn = document.getElementById("micBtn");
 
 let recognition = null;
 let isListening = false;
+let finalTranscript = "";
 
 /* ---------- UI ---------- */
 function addMessage(text, type) {
@@ -107,6 +108,7 @@ async function send() {
 
   addMessage(text, "user");
   inputEl.value = "";
+  finalTranscript = ""; // reset voice memory
 
   try {
     const res = await fetch("http://localhost:3000/ask", {
@@ -143,11 +145,19 @@ function initSpeech() {
   rec.interimResults = true;
 
   rec.onresult = (event) => {
-    let transcript = "";
+    let interimTranscript = "";
+
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
+      const text = event.results[i][0].transcript;
+
+      if (event.results[i].isFinal) {
+        finalTranscript += text + " ";
+      } else {
+        interimTranscript += text;
+      }
     }
-    inputEl.value = transcript;
+
+    inputEl.value = finalTranscript + interimTranscript;
   };
 
   rec.onend = () => {
