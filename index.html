@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My AI</title>
+  <title>Voice Chat</title>
   <style>
     body {
       margin: 0;
       background: #000;
-      color: white;
+      color: #fff;
       font-family: Arial;
     }
 
@@ -24,10 +24,8 @@
       border-radius: 8px;
       max-width: 80%;
       word-wrap: break-word;
+      background: #1a1a1a;
     }
-
-    .user { background: #1a1a1a; margin-left: auto; }
-    .bot { background: #2a2a2a; }
 
     .bar {
       display: flex;
@@ -56,6 +54,10 @@
       border-radius: 6px;
       cursor: pointer;
     }
+
+    button:hover {
+      background: #555;
+    }
   </style>
 </head>
 <body>
@@ -63,44 +65,50 @@
 <div id="chat"></div>
 
 <div class="bar">
-  <input id="input" placeholder="Type or speak..." />
-  <button id="mic">🎤</button>
-  <button id="send">Send</button>
+  <input id="input" placeholder="Speak or type..." />
+  <button id="micBtn">🎤</button>
+  <button id="sendBtn">Send</button>
 </div>
 
 <script>
 
 const input = document.getElementById("input");
 const chat = document.getElementById("chat");
-const micBtn = document.getElementById("mic");
-const sendBtn = document.getElementById("send");
+const micBtn = document.getElementById("micBtn");
+const sendBtn = document.getElementById("sendBtn");
 
 let recognition;
 let listening = false;
 let finalText = "";
 
 /* =========================
-   CHAT UI
+   CHAT ONLY
 ========================= */
-function add(text, type) {
+function add(text) {
   const div = document.createElement("div");
-  div.className = "msg " + type;
+  div.className = "msg";
   div.textContent = text;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
 /* =========================
-   SEND (INSTANT, NO AI)
+   SEND (JUST DISPLAY)
 ========================= */
 function send() {
   const text = input.value.trim();
   if (!text) return;
 
-  add(text, "user");
+  add(text);
   input.value = "";
 
-  finalText = ""; // reset speech buffer
+  finalText = "";
+
+  if (recognition && listening) {
+    listening = false;
+    recognition.stop();
+    micBtn.style.background = "#333";
+  }
 }
 
 sendBtn.onclick = send;
@@ -110,12 +118,13 @@ input.addEventListener("keydown", (e) => {
 });
 
 /* =========================
-   SPEECH (FIXED + FAST)
+   MIC SYSTEM ONLY
 ========================= */
 const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if (SpeechAPI) {
   recognition = new SpeechAPI();
+
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = "en-US";
@@ -135,7 +144,11 @@ if (SpeechAPI) {
     }
 
     finalText += final;
-    input.value = finalText + interim; // instant feel
+    input.value = finalText + interim;
+  };
+
+  recognition.onend = () => {
+    if (listening) recognition.start();
   };
 }
 
@@ -154,8 +167,8 @@ micBtn.onclick = () => {
     listening = true;
     micBtn.style.background = "#666";
   } else {
-    recognition.stop();
     listening = false;
+    recognition.stop();
     micBtn.style.background = "#333";
   }
 };
