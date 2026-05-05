@@ -27,6 +27,10 @@
       background: #1a1a1a;
     }
 
+    .bot {
+      background: #2a2a2a;
+    }
+
     .bar {
       display: flex;
       max-width: 650px;
@@ -39,7 +43,7 @@
       flex: 1;
       padding: 10px;
       background: #111;
-      color: white;
+      color: #fff;
       border: 1px solid #333;
       border-radius: 6px;
       outline: none;
@@ -49,7 +53,7 @@
       margin-left: 8px;
       padding: 10px;
       background: #333;
-      color: white;
+      color: #fff;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -82,25 +86,58 @@ let listening = false;
 let finalText = "";
 
 /* =========================
-   CHAT ONLY
+   CHAT
 ========================= */
 function add(text) {
   const div = document.createElement("div");
-  div.className = "msg";
+  div.className = "msg bot";
   div.textContent = text;
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
 /* =========================
-   SEND (JUST DISPLAY)
+   RULE ENGINE (NO AI)
+========================= */
+function getReply(text) {
+  text = text.toLowerCase();
+
+  // greeting
+  if (text.includes("hi") || text.includes("hello")) {
+    return "Hi 👋";
+  }
+
+  // search attempt
+  if (text.includes("search")) {
+    return "I can’t perform searches. Please use a browser.";
+  }
+
+  // basic unsafe language filter (neutral response only)
+  if (
+    text.includes("fuck") ||
+    text.includes("shit") ||
+    text.includes("idiot") ||
+    text.includes("stupid")
+  ) {
+    return "Please keep the conversation respectful.";
+  }
+
+  // default response
+  return "Message received.";
+}
+
+/* =========================
+   SEND
 ========================= */
 function send() {
   const text = input.value.trim();
   if (!text) return;
 
-  add(text);
+  add(text); // user message
   input.value = "";
+
+  const reply = getReply(text);
+  add(reply);
 
   finalText = "";
 
@@ -118,7 +155,7 @@ input.addEventListener("keydown", (e) => {
 });
 
 /* =========================
-   MIC SYSTEM ONLY
+   SPEECH ENGINE
 ========================= */
 const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -157,7 +194,7 @@ if (SpeechAPI) {
 ========================= */
 micBtn.onclick = () => {
   if (!recognition) {
-    alert("Speech not supported");
+    alert("Speech not supported in this browser");
     return;
   }
 
