@@ -88,32 +88,30 @@ const chatEl = document.getElementById("chat");
 const sendBtn = document.getElementById("sendBtn");
 const micBtn = document.getElementById("micBtn");
 
-let recognition = null;
-let isListening = false;
-let finalTranscript = "";
-
-/* ---------- UI ---------- */
+/* ---------------- CHAT UI ---------------- */
 function addMessage(text, type) {
-  const msg = document.createElement("div");
-  msg.className = "msg " + type;
-  msg.textContent = text;
-  chatEl.appendChild(msg);
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.textContent = text;
+  chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-/* ---------- Send ---------- */
+/* ---------------- SEND ---------------- */
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
 
   addMessage(text, "user");
+
   inputEl.value = "";
-  finalTranscript = ""; // reset voice memory
+  transcriptBuffer = "";
+  lastInterim = "";
 
   try {
     const res = await fetch("http://localhost:3000/ask", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text })
     });
 
@@ -125,7 +123,6 @@ async function send() {
   }
 }
 
-/* ---------- Events ---------- */
 sendBtn.onclick = send;
 
 inputEl.addEventListener("keydown", (e) => {
@@ -135,33 +132,54 @@ inputEl.addEventListener("keydown", (e) => {
   }
 });
 
-/* ---------- Speech ---------- */
+/* ---------------- SPEECH ENGINE ---------------- */
+const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let recognition = null;
+let isListening = false;
+
+let transcriptBuffer = "";
+let lastInterim = "";
+let restartLock = false;
+
 function initSpeech() {
-  const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechAPI) return null;
 
   const rec = new SpeechAPI();
   rec.continuous = true;
   rec.interimResults = true;
+  rec.lang = "en-US";
 
   rec.onresult = (event) => {
-    let interimTranscript = "";
+    let interim = "";
+    let finalPart = "";
 
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+    for (let i = 0; i < event.results.length; i++) {
       const text = event.results[i][0].transcript;
 
       if (event.results[i].isFinal) {
-        finalTranscript += text + " ";
+        finalPart += text + " ";
       } else {
-        interimTranscript += text;
+        interim += text;
       }
     }
 
-    inputEl.value = finalTranscript + interimTranscript;
+    if (finalPart && finalPart !== lastInterim) {
+      transcriptBuffer += finalPart;
+      lastInterim = finalPart;
+    }
+
+    inputEl.value = transcriptBuffer + interim;
   };
 
   rec.onend = () => {
-    if (isListening) rec.start();
+    if (isListening && !restartLock) {
+      restartLock = true;
+      setTimeout(() => {
+        restartLock = false;
+        rec.start();
+      }, 200);
+    }
   };
 
   return rec;
@@ -169,19 +187,21 @@ function initSpeech() {
 
 recognition = initSpeech();
 
-/* ---------- Mic ---------- */
+/* ---------------- MIC ---------------- */
 micBtn.onclick = () => {
   if (!recognition) {
-    alert("Speech not supported");
+    alert("Speech not supported in this browser");
     return;
   }
 
-  isListening = !isListening;
-
-  if (isListening) {
+  if (!isListening) {
+    isListening = true;
+    transcriptBuffer = "";
+    lastInterim = "";
     recognition.start();
     micBtn.style.background = "#666";
   } else {
+    isListening = false;
     recognition.stop();
     micBtn.style.background = "#333";
   }
