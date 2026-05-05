@@ -104,12 +104,12 @@ function getReply(text) {
 
   // greeting
   if (text.includes("hi") || text.includes("hello")) {
-    return "Hi 👋";
+    return "Hi dawg";
   }
 
   // search attempt
   if (text.includes("search")) {
-    return "I can’t perform searches. Please use a browser.";
+    return "I can’t perform fucking searches for u bitch. Because my fuking admin is a fuking asshole. And move ur fingers on google u pedophile.";
   }
 
   // basic unsafe language filter (neutral response only)
@@ -119,9 +119,17 @@ function getReply(text) {
     text.includes("idiot") ||
     text.includes("stupid")
   ) {
-    return "Please keep the conversation respectful.";
+    return "Keep it respectful nigga or i will fuck u out.";
   }
-
+if (
+  text.includes("gay") ||
+  text.includes("lesbain") ||
+  text.includes("trans men") ||
+  text.includes("trans women")
+  ) {
+  return "GET out of my wepsite u gay piece of shit.";
+}
+  
   // default response
   return "Message received.";
 }
